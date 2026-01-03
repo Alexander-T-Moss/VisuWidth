@@ -1,0 +1,37 @@
+{
+  "name": "numpy",
+  "version": "2.3.5",
+  "build": "py314hde9b8b7_0",
+  "build_number": 0,
+  "channel": "https://repo.anaconda.com/pkgs/main/osx-arm64",
+  "subdir": "osx-arm64",
+  "fn": "numpy-2.3.5-py314hde9b8b7_0.conda",
+  "md5": "71deaa68ff7dee1c1fb1158468cd1d66",
+  "url": "https://repo.anaconda.com/pkgs/main/osx-arm64/numpy-2.3.5-py314hde9b8b7_0.conda",
+  "sha256": "fa0bcb2ca100cfc9b8d4120ed9c359f308d0621546ac201d44b504318b50a235",
+  "depends": [
+    "__osx >=12.1",
+    "blas * openblas",
+    "libcxx >=17",
+    "libopenblas >=0.3.30,<1.0a0",
+    "numpy-base 2.3.5 py314hb4b2851_0",
+    "python >=3.14,<3.15.0a0",
+    "python_abi 3.14.* *_cp314"
+  ],
+  "constrains": [],
+  "license": "BSD-3-Clause",
+  "timestamp": 1763980760000,
+  "size": 10166,
+  "requested_spec": "numpy",
+  "package_tarball_full_path": "/opt/miniconda3/pkgs/numpy-2.3.5-py314hde9b8b7_0.conda",
+  "extracted_package_dir": "/opt/miniconda3/pkgs/numpy-2.3.5-py314hde9b8b7_0",
+  "files": [],
+  "paths_data": {
+    "paths_version": 1,
+    "paths": []
+  },
+  "link": {
+    "source": "/opt/miniconda3/pkgs/numpy-2.3.5-py314hde9b8b7_0",
+    "type": 1
+  }
+}

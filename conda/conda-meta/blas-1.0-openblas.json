@@ -1,0 +1,30 @@
+{
+  "name": "blas",
+  "version": "1.0",
+  "build": "openblas",
+  "build_number": 0,
+  "channel": "https://repo.anaconda.com/pkgs/main/osx-arm64",
+  "subdir": "osx-arm64",
+  "fn": "blas-1.0-openblas.conda",
+  "md5": "082557147829a904fa986cb86dd1e45a",
+  "url": "https://repo.anaconda.com/pkgs/main/osx-arm64/blas-1.0-openblas.conda",
+  "sha256": "4fd46cbbcfd8eea36f4b5eee916c0b973d3e9cf19931b1e046930fa087798752",
+  "depends": [],
+  "constrains": [],
+  "track_features": "nomkl",
+  "license": "",
+  "timestamp": 1628529248000,
+  "size": 9998,
+  "requested_spec": "None",
+  "package_tarball_full_path": "/opt/miniconda3/pkgs/blas-1.0-openblas.conda",
+  "extracted_package_dir": "/opt/miniconda3/pkgs/blas-1.0-openblas",
+  "files": [],
+  "paths_data": {
+    "paths_version": 1,
+    "paths": []
+  },
+  "link": {
+    "source": "/opt/miniconda3/pkgs/blas-1.0-openblas",
+    "type": 1
+  }
+}
