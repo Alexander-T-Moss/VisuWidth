@@ -1,12 +1,12 @@
 import preview
 
 # Definable pattern parameters
-shape = [[0.00, 0.00], [100.00, 100.00]]
+shape = [[0.00, 0.00], [200.00, 200.00]]
 hop = 2.00
 layer_height = 2.00
 lines = 4
-em = 1.85
-end_pos = [100.00, 100.00]
+em = 1.875
+end_pos = [300.00, 300.00, 20.00]
 
 # Calculated pattern parameters
 z = layer_height
@@ -31,7 +31,7 @@ for i in range(lines):
     
     # Last line check
     if i == lines - 1:
-        rows.append(row(end_pos[0], end_pos[1], z_hop))
+        rows.append(row(end_pos[0], end_pos[1], end_pos[2]))
         break
     
     # Move to start next line
