@@ -9,6 +9,9 @@ limits = [[0, 100], [0, 100], [0, 20]] # X, Y, Z
 autoFit = False
 scale = False
 
+# Add scaling to extrusion width line thickness
+mult = 1
+
 # Load gcode and extract cartesian coordinates
 path = "../gcodes/previewTest.txt"
 gcode = np.loadtxt(path)
@@ -18,7 +21,7 @@ x, y, z = pts.T
 # Segment gcode
 segments = np.stack([pts[:-1], pts[1:]], axis=1)
 
-# Segment distance
+# Segment distances
 deltas = np.diff(pts, axis=0)
 dist = np.linalg.norm(deltas, axis=1)
 dist = np.maximum(dist, 1e-9)
@@ -39,7 +42,7 @@ ax = fig.add_subplot(projection="3d")
 if np.any(extruding):
     ax.add_collection3d(Line3D(
         segments[extruding],
-        linewidths=widths[extruding],
+        linewidths=widths[extruding]*mult,
         colors="blue",
     ))
 
@@ -59,6 +62,7 @@ ax.scatter(x, y, z, s=6)
 ax.set(xlabel="X", ylabel="Y", zlabel="Z",
        title=f"Toolpath From {path}")
 
+# Fit axis on min/max coordinates in gcode
 if autoFit:
     ax.set_xlim(x.min(), x.max())
     ax.set_ylim(y.min(), y.max())
@@ -67,6 +71,7 @@ if autoFit:
     y_range = y.max() - y.min()
     z_range = z.max() - z.min()
 
+# Fit axis on machine limits
 else:
     ax.set_xlim(limits[0][0], limits[0][1])
     ax.set_ylim(limits[1][0], limits[1][1])
@@ -75,8 +80,11 @@ else:
     y_range = limits[1][1] - limits[1][0]
     z_range = limits[2][1] - limits[2][0]
 
+# Scale axis to limits
 if scale:
     ax.set_box_aspect((x_range, y_range, z_range))
+
+# Plot with equal size axis (cube plot)
 else:
     ax.set_box_aspect((1, 1, 1))
 
