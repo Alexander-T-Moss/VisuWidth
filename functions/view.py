@@ -84,6 +84,30 @@ def read_roi(cap, cfg):
 
     return False, None
 
+def draw_roi(img, roi, M):
+
+    color = (0, 0, 255)
+    thickness = 3
+    y0, y1, x0, x1 = roi
+
+    # ROI corners in warped/unskew image coordinates
+    pts_warp = np.array([
+        [x0, y0],
+        [x1, y0],
+        [x1, y1],
+        [x0, y1],
+    ], dtype=np.float32).reshape(-1, 1, 2)
+
+    # Map back to preview using inverse homography
+    Minv = np.linalg.inv(M)
+    pts_prev = cv2.perspectiveTransform(pts_warp, Minv)
+
+    # Draw polygon on preview
+    cv2.polylines(img, [pts_prev.astype(np.int32)], isClosed=True,
+                  color=color, thickness=thickness)
+
+    return img
+
 if __name__ == "__main__":
 
     # Example resolutions

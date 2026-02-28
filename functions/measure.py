@@ -8,14 +8,14 @@ def mask(img, min_area=1500.0):
    # Otsu binary thresholding
    gry = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
    blr = cv2.GaussianBlur(gry, (5, 5), 0)
-   #cv2.imshow('DENOISED', blr)
+   cv2.imshow('DENOISED', blr)
    otsu = cv2.threshold(blr, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
-   #cv2.imshow('OTSU', otsu)
+   cv2.imshow('OTSU', otsu)
 
    # Morphology clean: https://docs.opencv.org/4.x/d9/d61/tutorial_py_morphological_ops.html
-   kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
-   otsu = cv2.morphologyEx(otsu, cv2.MORPH_OPEN, kernel, iterations=1)
-   otsu = cv2.morphologyEx(otsu, cv2.MORPH_CLOSE, kernel, iterations=2)
+   #kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+   #otsu = cv2.morphologyEx(otsu, cv2.MORPH_OPEN, kernel, iterations=1)
+   #otsu = cv2.morphologyEx(otsu, cv2.MORPH_CLOSE, kernel, iterations=2)
 
    # Countour filtering
    msk = np.zeros(img.shape[:2], np.uint8)
@@ -25,11 +25,13 @@ def mask(img, min_area=1500.0):
            if cv2.contourArea(cnt) > min_area: # Filters out contours below min_area
                cv2.drawContours(msk, [cnt], 0, 255, -1)
 
+   cv2.imshow("MASK", msk)
    return msk
 
 
 def measure_edges(image, n = 1.0):
    canny = cv2.Canny(image, 0, 255)
+   cv2.imshow('CANNY', canny)
    edges, rows = [], []
 
    # Find pairs of 255 (edges)
@@ -76,7 +78,7 @@ def monitor(width):
 
    # Text on image parameters
    font = cv2.FONT_HERSHEY_SIMPLEX
-   font_scale = 0.6
+   font_scale = 0.8
    thickness = 1
    margin = 10
    line_gap = 8
@@ -163,7 +165,6 @@ def monitor(width):
 
            # Show preview frames
            cv2.imshow('Preview', frame)
-           cv2.imshow('Mask', msk)
 
        # Exit on escape key
        if cv2.waitKey(20) == 27:

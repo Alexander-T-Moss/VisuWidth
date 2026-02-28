@@ -8,12 +8,11 @@ def sleep_until(target_time):
         time.sleep(target_time - now)
 
 
-def monitor(target_width, width, moonraker_conn):
+def monitor(target_width, width, flow, moonraker_conn, e):
     i_error = 0.0
     prev_error = 0.0
     prev_width = None
 
-    flow = 100.0
     next_update = time.monotonic()
 
     # Start controller once width is recorded
@@ -32,11 +31,12 @@ def monitor(target_width, width, moonraker_conn):
 
         # Skip 0 reads for no measurement
         if measured_width == 0:
-            print(flow)
+            #print(flow.value)
             continue
 
         # Error
         error = desired_width - measured_width
+        e.value = error
 
         # Proportional Term
         p_term = cfg.k_P * error
@@ -58,6 +58,6 @@ def monitor(target_width, width, moonraker_conn):
         prev_width = measured_width
 
         # PID output
-        flow = flow + p_term + i_term + d_term
-        flow = max(50.0, min(200.0, flow))
-        moonraker_conn.send_gcode(f"M221 S{flow}")
+        flow.value = flow.value + p_term + i_term + d_term
+        flow.value = max(50.0, min(200.0, flow.value))
+        moonraker_conn.send_gcode(f"M221 S{flow.value}")

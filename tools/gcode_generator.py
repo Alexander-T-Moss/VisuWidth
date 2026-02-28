@@ -1,11 +1,9 @@
 import config as cfg, math, os
 
-
 # https://manual.slic3r.org/advanced/flow-math
 def e_calc(l, w=cfg.default_width, h=cfg.layer_height):
     e_area = math.pi * (1.75 / 2) ** 2
     return ((w - h) * h + math.pi * (h / 2) ** 2) * l / e_area
-
 
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 gcode_file = open(os.path.join(project_root, "gcodes", "demo_pattern.txt"), "w", newline="\n")

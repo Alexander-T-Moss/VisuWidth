@@ -16,24 +16,39 @@ def main():
 
     # Calibration procedures
     #calibrate.checkerboard(moonraker_conn, cfg)
-    #calibrate.aruco(moonraker_conn, cfg)
+    calibrate.aruco(moonraker_conn, cfg)
 
     # Create a float variable to store width measurement
     width = Value('d')
     width.value = 0
     target_width = Value('d')
     target_width.value = cfg.default_width
+    flow = Value('d')
+    flow.value = 100
+
+    error = Value('d')
+
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    font_scale = 2
+    thickness = 3
+    text_colour = (255, 255, 255)
+
+    padding_x = 60
+    padding_y = 60
 
     # Start the width monitor
     monitor = Process(target=measure.monitor, args=(width,))
     monitor.start()
 
     # Start the live width plotter
-    plotter = Process(target=live_plot.plot, args=(width, target_width,))
-    plotter.start()
+    #plotter = Process(target=live_plot.plot, args=(width, target_width,))
+    #plotter.start()
+
+    temp_plotter = Process(target=live_plot.plot, args=(flow, error))
+    temp_plotter.start()
 
     # Start PID controller
-    controller = Process(target=compensator.monitor, args=(target_width, width, moonraker_conn))
+    controller = Process(target=compensator.monitor, args=(target_width, width, flow, moonraker_conn, error))
     controller.start()
 
     # Start the print
@@ -49,19 +64,44 @@ def main():
 
         # Show preview frame
         if ret:
+            if view.aruco_data:
+                frame = view.draw_roi(frame, view.roi_am, view.M)
+
+            w_mm = float(width.value)
+            width_text = f"{w_mm:.3f} mm" if w_mm > 0.0 else "0.000 mm"
+
+            # measure text size
+            (tw, th), baseline = cv2.getTextSize(width_text, font, font_scale, thickness)
+
+            # OpenCV anchors text at the BASELINE, not the top
+            x = padding_x
+            y = padding_y + th
+
+            cv2.putText(frame, width_text, (x, y), font, font_scale,
+                        text_colour, thickness, cv2.LINE_AA)
+
+            f_percent = float(flow.value)
+            flow_text = f"{f_percent:.1f} %"
+
+            # position directly beneath width text
+            flow_y = y + th + 20  # 20px vertical spacing
+
+            cv2.putText(frame, flow_text, (x, flow_y), font, font_scale,
+                        text_colour, thickness, cv2.LINE_AA)
+
             cv2.imshow('Preview', frame)
 
         # Exit on escape
         if key == 27:
             plotter.terminate()
-            controller.terminate()
+            #controller.terminate()
             monitor.terminate()
             exit()
 
         # Increase target line width when Z is pressed
         if key == ord('z') and target_width.value == cfg.default_width:
-            target_width.value = cfg.default_width * 0.75
-            print("Width set to 0.75x")
+            target_width.value = cfg.default_width * 1.4
+            print("Width set to 1.4x")
 
         # Return target line width to default when X is pressed
         elif key == ord('x') and target_width.value != cfg.default_width:

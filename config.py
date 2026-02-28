@@ -24,13 +24,13 @@ max_width = 3
 pat_shape = [[30.0, 30.0], [270.0, 260.0]]
 layer_height = 0.6
 lines = 11
-default_width = 2
+default_width = 1.2
 print_speed = 10 # mm/s
 travel_speed = 300 # mm/s
 
 # Place aruco mark in ROI from camera perspective
 # Z needs to match layer_height below
-aruco_location = [290.10, 15.10, layer_height]
+aruco_location = [290.70, 15.10, layer_height]
 
 # Length (mm) of the Aruco marker side
 aruco_dim = 8.46
