@@ -5,20 +5,19 @@ from multiprocessing import Process, Value
 import cv2, config as cfg, time
 from tools import live_plot
 
-
 def main():
 
     # Establish connection to moonraker (printer webAPI)
     moonraker_conn = MoonrakerPrinter(cfg.printer_ip)
 
     # Run through print_start sequence
-    #parser.parse('print_start', moonraker_conn)
+    parser.parse('print_start', moonraker_conn)
 
     # Calibration procedures
-    #calibrate.checkerboard(moonraker_conn, cfg)
+    calibrate.checkerboard(moonraker_conn, cfg) # Can comment out after being run
     calibrate.aruco(moonraker_conn, cfg)
 
-    # Create a float variable to store width measurement
+    # Create variables accessible by processes
     width = Value('d')
     width.value = 0
     target_width = Value('d')
@@ -26,28 +25,23 @@ def main():
     flow = Value('d')
     flow.value = 100
 
-    error = Value('d')
-
+    # Font parameters for preview window
     font = cv2.FONT_HERSHEY_SIMPLEX
     font_scale = 2
     thickness = 3
     text_colour = (255, 255, 255)
-
     padding_x = 60
     padding_y = 60
 
-    # Start the width monitor
+    # Width monitor
     monitor = Process(target=measure.monitor, args=(width,))
     monitor.start()
 
-    # Start the live width plotter
-    #plotter = Process(target=live_plot.plot, args=(width, target_width,))
-    #plotter.start()
+    # Live width plotter
+    plotter = Process(target=live_plot.plot, args=(width, target_width,))
+    plotter.start()
 
-    temp_plotter = Process(target=live_plot.plot, args=(flow, error))
-    temp_plotter.start()
-
-    # Start PID controller
+    # PID flow controller
     controller = Process(target=compensator.monitor, args=(target_width, width, flow, moonraker_conn, error))
     controller.start()
 
@@ -55,10 +49,12 @@ def main():
     print_process = Process(target=parser.parse, args=("demo_pattern", moonraker_conn))
     print_process.start()
 
+    # Open camera feed
     cap = view.capture()
 
     # Main program loop
     while True:
+
         ret, frame = view.read_calibrated(cap, cfg)
         key = cv2.waitKey(1) & 0xFF
 
@@ -67,47 +63,45 @@ def main():
             if view.aruco_data:
                 frame = view.draw_roi(frame, view.roi_am, view.M)
 
+            # Pull latest width and format at text
             w_mm = float(width.value)
             width_text = f"{w_mm:.3f} mm" if w_mm > 0.0 else "0.000 mm"
-
-            # measure text size
             (tw, th), baseline = cv2.getTextSize(width_text, font, font_scale, thickness)
-
-            # OpenCV anchors text at the BASELINE, not the top
             x = padding_x
             y = padding_y + th
 
+            # Put text onto camera feed
             cv2.putText(frame, width_text, (x, y), font, font_scale,
                         text_colour, thickness, cv2.LINE_AA)
 
+            # Pull latest flow rate and format as text
             f_percent = float(flow.value)
             flow_text = f"{f_percent:.1f} %"
+            flow_y = y + th + 20
 
-            # position directly beneath width text
-            flow_y = y + th + 20  # 20px vertical spacing
-
+            # Put text onto camera feed
             cv2.putText(frame, flow_text, (x, flow_y), font, font_scale,
                         text_colour, thickness, cv2.LINE_AA)
 
+            # Show camera feed in 'Preview' window
             cv2.imshow('Preview', frame)
 
         # Exit on escape
         if key == 27:
             plotter.terminate()
-            #controller.terminate()
+            controller.terminate()
             monitor.terminate()
             exit()
 
-        # Increase target line width when Z is pressed
+        # Change target line width when Z is pressed
         if key == ord('z') and target_width.value == cfg.default_width:
-            target_width.value = cfg.default_width * 1.4
-            print("Width set to 1.4x")
+            target_width.value = 1.6
+            print("Width set to 1.6mm")
 
         # Return target line width to default when X is pressed
         elif key == ord('x') and target_width.value != cfg.default_width:
             target_width.value = cfg.default_width
-            print("Width set to 1.0x")
-
+            print("Width set to default")
 
 if __name__ == "__main__":
     main()

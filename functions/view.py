@@ -61,6 +61,8 @@ def capture(in_res=None, out_res=None):
 
 def read_calibrated(cap, cfg):
 
+    return cap.read() # Temporary test
+
     if checkerboard_data:
         ret, frame = cap.read()
         dst = cv2.undistort(frame, mtx, dist, None, newcameramtx)

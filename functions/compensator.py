@@ -59,5 +59,5 @@ def monitor(target_width, width, flow, moonraker_conn, e):
 
         # PID output
         flow.value = flow.value + p_term + i_term + d_term
-        flow.value = max(50.0, min(200.0, flow.value))
+        flow.value = max(25.0, min(200.0, flow.value))
         moonraker_conn.send_gcode(f"M221 S{flow.value}")
