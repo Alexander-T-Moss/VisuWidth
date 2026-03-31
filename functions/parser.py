@@ -1,7 +1,8 @@
 # Import required libraries
 import os, config as cfg
 
-# Sends commands in filename to printer via moonraker
+# Sends commands sequentially in 'filename' to printer via moonrakerpy
+# Can be run as a process
 def parse(filename, moonraker_conn):
 
     # Find filename.txt

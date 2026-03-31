@@ -1,6 +1,6 @@
 # Brief Description :
 # Using an ArUco marker, determines the skew correction
-# factor M and ROI, saving this to a NPZ
+# factor M and ROI, saving results to a NPZ in npz directory
 #
 # References :
 # https://www.geeksforgeeks.org/computer-vision/detecting-aruco-markers-with-opencv-and-python-1/
@@ -13,24 +13,25 @@ import numpy as np
 import functions.view as view
 from functions.view import read_calibrated
 
-# Define the ArUco dictionary in use
+# Define ArUco dictionary
 arucoDict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
 
 # Create ArUco detector with default parameters
 params = cv2.aruco.DetectorParameters()
 detector = cv2.aruco.ArucoDetector(arucoDict, params)
 
-# Sub-pixel refinement criteria (https://docs.opencv.org/4.x/dc/dbb/tutorial_py_calibration.html)
+# Sub-pixel refinement criteria
+# (https://docs.opencv.org/4.x/dc/dbb/tutorial_py_calibration.html)
 subPixCrit = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
-# Find checkerboards dir to save images
+# Find npz directory to save checkerboard images
 checkerboard_dir = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "images",
     "checkerboards"
 )
 
-# Define checkboard search parameters
+# Define checkerboard search parameters
 pattern = (5,6)
 crit = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
@@ -42,12 +43,14 @@ obj_pt[:, :2] = np.mgrid[0:pattern[0], 0:pattern[1]].T.reshape(-1, 2)
 obj_pts = []
 img_pts = []
 
+# Checkerboard calibration function
 def checkerboard(moonraker_conn, cfg, npz_path='npz/checkerboard.npz'):
 
+    # Calculate number of checkerboard images to be captured
     meshCount = cfg.check_mesh[0]*cfg.check_mesh[1]
     print(f"Scanning checkerboard\nMesh points: {meshCount}")
 
-    # Clear directory if it exists
+    # Clear checkerboard directory if it exists
     if os.path.isdir(checkerboard_dir):
         for f in os.listdir(checkerboard_dir):
             fp = os.path.join(checkerboard_dir, f)
@@ -73,7 +76,7 @@ def checkerboard(moonraker_conn, cfg, npz_path='npz/checkerboard.npz'):
         for xi in range(cfg.check_mesh[0]):
             x = cfg.check_start[0] + xi * x_step
 
-            # Move the current mesh point
+            # Move to current mesh point
             moonraker_conn.send_gcode(f'G1 X{x:.3f} Y{y:.3f} Z{cfg.check_end[2]:.3f} F6000')
             moonraker_conn.send_gcode('M400')
             time.sleep(0.2)
@@ -82,6 +85,8 @@ def checkerboard(moonraker_conn, cfg, npz_path='npz/checkerboard.npz'):
             ret, frame = cap.read()
             if ret:
                 fname = f'image_{xi:02d}x{yi:02d}.png'
+
+                # Save frame for later
                 save = cv2.imwrite(os.path.join(checkerboard_dir, fname), frame)
                 if not save:
                     print(f'Failed to save image: {xi:02d}x{yi:02d}')
@@ -93,6 +98,7 @@ def checkerboard(moonraker_conn, cfg, npz_path='npz/checkerboard.npz'):
     img_paths = sorted(
         glob.glob(os.path.join(checkerboard_dir, "*.png")))
 
+    # Detection variables
     detects = 0
     grey = None
 
@@ -112,7 +118,7 @@ def checkerboard(moonraker_conn, cfg, npz_path='npz/checkerboard.npz'):
 
     print(f'Detected {detects}/{len(img_paths)} checkerboards')
 
-    # Determine camera matrix
+    # Determine camera correction matrix
     if grey is not None and detects > 2/3 * meshCount:
         ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(obj_pts, img_pts, grey.shape[::-1], None, 4, None, None,
                                                            cv2.CALIB_ZERO_TANGENT_DIST,
@@ -121,17 +127,17 @@ def checkerboard(moonraker_conn, cfg, npz_path='npz/checkerboard.npz'):
         h, w = grey.shape[:2]
         newcameramtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dist, (w, h), 1, (w, h))
 
-        # Save calibrated camera matrix
+        # Save calibrated camera matrix as .npz
         np.savez(npz_path, mtx=mtx, dist=dist, newcameramtx=newcameramtx, roi=roi)
 
         print('New camera matrix calculated and saved')
 
-        import functions.view as v
-        v.mtx = mtx
-        v.dist = dist
-        v.newcameramtx = newcameramtx
-        v.roi = roi
-        v.checkerboard_data = True
+        # Apply new camera matrix
+        view.mtx = mtx
+        view.dist = dist
+        view.newcameramtx = newcameramtx
+        view.roi = roi
+        view.checkerboard_data = True
         print('Checkerboard calibration reloaded')
 
     else:
@@ -139,30 +145,11 @@ def checkerboard(moonraker_conn, cfg, npz_path='npz/checkerboard.npz'):
 
     cap.release()
 
-# Run checkerboard calibration
-if __name__ == "__main__":
-    import moonrakerpy as moonpy
-    import config as cfg
-
-    # Find npz directory
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    npz_dir = os.path.join(script_dir, "..", "npz")
-    os.makedirs(npz_dir, exist_ok=True)
-
-    # Format path to npz save file
-    npz_path = os.path.join(npz_dir, "checkerboard.npz")
-
-    # Run the calibration
-    moonraker_conn = moonpy.MoonrakerPrinter(cfg.printer_ip)
-    checkerboard(moonraker_conn, cfg, npz_path)
-
-    cv2.destroyAllWindows()
-    exit()
-
+# Aruco marker calibration function
 def aruco(moonraker_conn, cfg):
 
-    print('Scanning Aruco Marker')
     # Move to Aruco marker
+    print('Scanning Aruco Marker')
     moonraker_conn.send_gcode(f'G0 X{cfg.aruco_location[0]} Y{cfg.aruco_location[1]} Z{cfg.aruco_location[2]} F{cfg.travel_speed*60}')
     moonraker_conn.send_gcode('M400')
     time.sleep(1) # Allow camera to refocus
@@ -194,15 +181,15 @@ def aruco(moonraker_conn, cfg):
         grey = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         crnrs, ids, _ = detector.detectMarkers(grey)
 
+        # Bypass aruco calibration with esc
         if cv2.waitKey(1) & 0xFF == 27:
             break
 
         # Calibrate skew if correct marker is found
         if ids is not None:
             if 18 in ids:
-
-                print('Detected marker')
                 # Refine location of Aruco marker corners
+                print('Detected marker')
                 crnrsSubPix = cv2.cornerSubPix(grey, crnrs[0].astype(np.float32),
                                                (11, 11), (-1, -1), subPixCrit)
 
@@ -218,17 +205,38 @@ def aruco(moonraker_conn, cfg):
                 roi = np.array([y_min, y_max, x_min, x_max], dtype=np.int32)
                 print('ROI calculated')
 
-                # Save and exit calibration loop
+                # Save and exit calibration
                 np.savez('npz/aruco.npz', roi=roi, M=M)
                 print('Calibration saved to ~/npz/aruco.npz')
 
-                import functions.view as v
-                v.roi_am = roi
-                v.M = M
-                v.aruco_data = True
-                print('Aruco calibration reloaded')
-
+                # Apply camera calibration
+                view.roi_am = roi
+                view.M = M
+                view.aruco_data = True
                 calibrated=True
+                print('Aruco calibration reloaded')
 
     cap.release()
     cv2.destroyAllWindows()
+
+# Run checkerboard calibration
+if __name__ == "__main__":
+
+    # Import required libraries
+    import moonrakerpy as moonpy
+    import config as cfg
+
+    # Find npz directory
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    npz_dir = os.path.join(script_dir, "..", "npz")
+    os.makedirs(npz_dir, exist_ok=True)
+
+    # Format path to npz save file
+    npz_path = os.path.join(npz_dir, "checkerboard.npz")
+
+    # Run the calibrations
+    moonraker_conn = moonpy.MoonrakerPrinter(cfg.printer_ip)
+    checkerboard(moonraker_conn, cfg, npz_path)
+
+    cv2.destroyAllWindows()
+    exit()

@@ -1,7 +1,7 @@
 # Brief Description :
 # Captures connected camera feed, with adjustable resolution
 # both in and out for displayed previews. Containarised for
-# use in other scripts
+# use in other scripts (allow shorthand use of calibrated feeds)
 #
 # References :
 # https://docs.opencv.org/4.x/dd/d43/tutorial_py_video_display.html
@@ -10,37 +10,40 @@
 import cv2, numpy as np
 from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parent.parent  # project root
-NPZ_DIR = BASE_DIR / "npz"
+dir = Path(__file__).resolve().parent.parent  # Project root
+npz = dir / "npz"
 
-# Checkerboard calibration
+# Load checkerboard calibration
 try:
-    data = np.load(NPZ_DIR / "checkerboard.npz")
+    data = np.load(npz / "checkerboard.npz")
     mtx = data["mtx"]
     dist = data["dist"]
     newcameramtx = data["newcameramtx"]
     roi_cb = data["roi"]
     checkerboard_data = True
+
 except FileNotFoundError:
     checkerboard_data = False
     print("No checkerboard calibration data found")
 
-# ArUco calibration
+# Load ArUco calibration
 try:
-    data = np.load(NPZ_DIR / "aruco.npz", allow_pickle=True)
+    data = np.load(npz / "aruco.npz", allow_pickle=True)
     roi_am = data["roi"]
     M = data["M"]
     aruco_data = True
+
 except FileNotFoundError:
     aruco_data = False
     print("No aruco calibration data found")
 
-# Containariesed camera capture
+# Containerised camera capture
 def capture(in_res=None, out_res=None):
 
     # Default argument values
     if in_res is None:
         in_res = [1920, 1080]
+
     if out_res is not None:
         cv2.namedWindow('Preview', cv2.WINDOW_NORMAL)
         cv2.resizeWindow('Preview', out_res[0], out_res[1])
@@ -59,9 +62,8 @@ def capture(in_res=None, out_res=None):
 
     return cap
 
+# Returns camera feed that is checkerboard calibrated
 def read_calibrated(cap, cfg):
-
-    return cap.read() # Temporary test
 
     if checkerboard_data:
         ret, frame = cap.read()
@@ -71,11 +73,11 @@ def read_calibrated(cap, cfg):
         dst = dst[y:y + h, x:x + w]
 
         dst = cv2.resize(dst, (cfg.res[0], cfg.res[1]), interpolation=cv2.INTER_LINEAR)
-
         return ret, dst
 
     return cap.read()
 
+# Returns camera feed that is checkerboard and ArUco calibrated
 def read_roi(cap, cfg):
 
     if aruco_data:
@@ -86,6 +88,7 @@ def read_roi(cap, cfg):
 
     return False, None
 
+# Helper function to visualise ROI onto non-cropped camera feed
 def draw_roi(img, roi, M):
 
     color = (0, 0, 255)
@@ -94,22 +97,20 @@ def draw_roi(img, roi, M):
 
     # ROI corners in warped/unskew image coordinates
     pts_warp = np.array([
-        [x0, y0],
-        [x1, y0],
-        [x1, y1],
-        [x0, y1],
+        [x0, y0], [x1, y0], [x1, y1], [x0, y1],
     ], dtype=np.float32).reshape(-1, 1, 2)
 
-    # Map back to preview using inverse homography
-    Minv = np.linalg.inv(M)
-    pts_prev = cv2.perspectiveTransform(pts_warp, Minv)
+    # Map back to preview
+    M_inv = np.linalg.inv(M)
+    pts_prev = cv2.perspectiveTransform(pts_warp, M_inv)
 
-    # Draw polygon on preview
+    # Draw onto preview
     cv2.polylines(img, [pts_prev.astype(np.int32)], isClosed=True,
                   color=color, thickness=thickness)
 
     return img
 
+# Tester to run view.py separately
 if __name__ == "__main__":
 
     # Example resolutions
@@ -125,7 +126,7 @@ if __name__ == "__main__":
         if ret:
             cv2.imshow("Preview", frame)
 
-        # Exit on escape key
+        # Exit on esc key
         if cv2.waitKey(20) == 27:
             break
 

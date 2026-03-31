@@ -1,3 +1,7 @@
+# Brief Description :
+# All user-changeable parameters consolidated
+# to a single .py file
+
 # Compensator PID parameters
 k_P = 15
 k_I = 0

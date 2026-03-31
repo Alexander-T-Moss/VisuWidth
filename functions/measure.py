@@ -1,23 +1,26 @@
+# Import required libraries
 import cv2, numpy as np, config as cfg, time
 from functions import view
 from collections import deque
 
-
+# Masking function
 def mask(img, min_area=1500.0):
 
-   # Otsu binary thresholding
+   # OTSU binary thresholding
    gry = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
    blr = cv2.GaussianBlur(gry, (5, 5), 0)
-   cv2.imshow('DENOISED', blr)
    otsu = cv2.threshold(blr, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+
+   cv2.imshow('DENOISED', blr)
    cv2.imshow('OTSU', otsu)
 
-   # Morphology clean: https://docs.opencv.org/4.x/d9/d61/tutorial_py_morphological_ops.html
+   # Morphology clean (replaced with contour filtering):
+   # (https://docs.opencv.org/4.x/d9/d61/tutorial_py_morphological_ops.html)
    #kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
    #otsu = cv2.morphologyEx(otsu, cv2.MORPH_OPEN, kernel, iterations=1)
    #otsu = cv2.morphologyEx(otsu, cv2.MORPH_CLOSE, kernel, iterations=2)
 
-   # Countour filtering
+   # Contour filtering
    msk = np.zeros(img.shape[:2], np.uint8)
    cnts, rnk = cv2.findContours(otsu, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
    for i, cnt in enumerate(cnts):
@@ -28,13 +31,18 @@ def mask(img, min_area=1500.0):
    cv2.imshow("MASK", msk)
    return msk
 
-
+# Canny edge detection and edge seperation measurer
 def measure_edges(image, n = 1.0):
+
+   # Canny edge detection
+   # (https://docs.opencv.org/4.x/da/d22/tutorial_py_canny.html)
    canny = cv2.Canny(image, 0, 255)
    cv2.imshow('CANNY', canny)
+
+   # Stores for edges and rows from image
    edges, rows = [], []
 
-   # Find pairs of 255 (edges)
+   # Find pairs of 255 (edges as white pixels)
    for y, px in enumerate(canny):
        pts = np.where(px == 255)[0]
        if len(pts) == 2:
@@ -44,8 +52,8 @@ def measure_edges(image, n = 1.0):
    # Convert edges, rows to numpy arrays for handling
    edges, rows = np.array(edges), np.array(rows)
 
-   # Check if any edges are present
-   # (2/3 of ROI has a detected edge)
+   # Check if edges are long enough to be valid
+   # (2/3 of ROI needs a detected edge)
    min_length = 2*cfg.roi_res/3
    if len(edges) <= min_length:
        return 0, None, None
@@ -63,11 +71,13 @@ def measure_edges(image, n = 1.0):
    filtered_edges = edges[mask]
    filtered_rows = rows[mask]
 
+   # Catch no valid widths detected
    if len(filtered_diffs) == 0:
        return 0, None, None
+
    return np.mean(filtered_diffs), filtered_edges, filtered_rows
 
-
+# Edge measuring function (ran as a process)
 def monitor(width):
 
    # Open webcam feed
@@ -97,15 +107,16 @@ def monitor(width):
 
    # Start monitor
    while True:
-       t0 = time.perf_counter()
 
+       t0 = time.perf_counter()
        ret, frame = view.read_roi(cap, cfg)
 
        if ret:
+
+           # Mask and measure image (above functions)
            msk = mask(frame)
            dst, edges, rows = measure_edges(msk, 1.5)
            dst *= px_length
-
            width_text = f"{dst:.3f} mm"
 
            # Update width (if all filter checks pass)
@@ -119,14 +130,14 @@ def monitor(width):
                ok = (valid_step and valid_range)
                out = float(prev_width) if ok else 0.0
 
-               # Zero width measurement
+               # Handle zero width measurements
                if out == 0.0:
                    width.value = 0.0
                    zero_read_time = now
                    non_zero_read = False
 
-               # Ignore initial extrusion inconsistency with
-               # delay in outputing measured width
+               # Ignore initial extrusion inconsistency (pressure equalising)
+               # with delay in outputting measured widths
                else:
                    if zero_read_time is None:
                        width.value = out
@@ -136,6 +147,7 @@ def monitor(width):
                        elif (now - zero_read_time) >= holdoff:
                            width.value = out
 
+           # Store width measurement
            widths.append(dst)
 
            # Draw edge lines onto preview image
