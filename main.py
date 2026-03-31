@@ -1,3 +1,10 @@
+# Brief Description :
+# Main program that orchestrates the individual functions
+#
+# References :
+# https://docs.python.org/3/library/multiprocessing.html
+# https://pypi.org/project/MoonrakerPy/
+
 # Import required libraries
 from moonrakerpy import MoonrakerPrinter
 from functions import parser, calibrate, measure, compensator, view
